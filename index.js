@@ -15,12 +15,14 @@ var AWS = require("aws-sdk"),
 	db = require.main.require("./src/database"),
 	set = require("lodash").set();
 
+const { Storage } = require.main.require('@google-cloud/storage');
+
 var plugin = {};
 
 "use strict";
 
 var connection = null;
-var uploadProvider = process.env.UPLOAD_PROVIDER || "s3";
+var uploadProvider = process.env.UPLOAD_PROVIDER || nconf.get("cloud_upload_provider") || "gcs";
 
 var settings = initSettingsFromEnv();
 
@@ -29,6 +31,8 @@ var secretAccessKeyFromDb = false;
 var serviceAccountFromDb = false;
 
 function initSettingsFromEnv() {
+	winston.debug("Initializing cloud upload provider of %s", uploadProvider);
+
 	switch(uploadProvider) {
 		case "s3": {
 			return {
@@ -44,10 +48,13 @@ function initSettingsFromEnv() {
 			}
 		}
 		case "gcs": {
+			const gcsUploadBucket = nconf.get("gcs_upload_bucket");
+			const gcsServiceAccountBase64 = nconf.get("gcs_service_account");
+
 			return {
 				"provider": "gcs",
-				"serviceAccount": JSON.parse(Buffer.from(process.env.GCS_SERVICE_ACCOUNT || '', 'base64').toString('utf-8') || '{}'),
-				"bucket": process.env.GCS_UPLOAD_BUCKET || undefined,
+				"serviceAccount": JSON.parse(Buffer.from(process.env.GCS_SERVICE_ACCOUNT || gcsServiceAccountBase64 || '', 'base64').toString('utf-8') || '{}'),
+				"bucket": process.env.GCS_UPLOAD_BUCKET || gcsUploadBucket || undefined,
 				"host": process.env.GCS_UPLOAD_HOST || "storage.googleapis.com",
 				"path": process.env.GCS_UPLOAD_PATH || undefined,
 			}
@@ -79,7 +86,7 @@ function fetchSettings(callback) {
 		}
 
 		if(!newSettings.provider) {
-			settings.provider = process.env.UPLOAD_PROVIDER || "s3";
+			settings.provider = process.env.UPLOAD_PROVIDER || "gcs";
 		}
 
 		if(settings.provider === "s3") {
@@ -165,7 +172,7 @@ function fetchSettings(callback) {
 			}
 		}
 
-		if(settings.provider === "gcp") {
+		if(settings.provider === "gcs") {
 			secretAccessKeyFromDb = false;
 	
 			if (newSettings.serviceAccount) {
@@ -186,7 +193,7 @@ function fetchSettings(callback) {
 			}
 	
 			if (settings.serviceAccount) {
-				// TODO
+				winston.info("Service account loaded from environment variable GCS_SERVICE_ACCOUNT");
 			}
 		}
 
@@ -216,7 +223,12 @@ function getConnection() {
 		}
 
 		if(settings.provider === "gcs") {
-			// TODO
+			const gcsCredentialFile = nconf.get("gcs_credential_file");
+			if(!gcsCredentialFile){
+				throw new Error('GCS credential must be set when selecting UPLOAD_PROVIDER = gcs ');
+			}
+
+			connection = new Storage({keyFilename: gcsCredentialFile});
 		}
 	}
 
@@ -291,7 +303,7 @@ function renderAdmin(req, res) {
 function prepareSettings(req, res, next) {
 	var data = req.body;
 	var newSettings = {
-		provider: data.provider || "s3",
+		provider: data.provider || "gcs",
 		bucket: data.bucket || "",
 		host: data.host || "",
 		path: data.path || "",
@@ -324,6 +336,7 @@ function saveSettings(settings, res, next) {
 }
 
 plugin.uploadImage = function (data, callback) {
+	winston.debug("nodebb-plugin-upload filter:uploadImage hook has been called ...")
 	var image = data.image;
 
 	if (!image) {
@@ -350,7 +363,7 @@ plugin.uploadImage = function (data, callback) {
 		}
 
 		fs.readFile(image.path, function (err, buffer) {
-			upload(image.name, err, buffer, callback);
+			upload(image.name, image.path, err, buffer, callback);
 		});
 	}
 	else {
@@ -376,7 +389,7 @@ plugin.uploadImage = function (data, callback) {
 					buf = Buffer.concat([buf, d]);
 				});
 				stdout.on("end", function () {
-					upload(filename, null, buf, callback);
+					upload(filename, image.url, null, buf, callback);
 				});
 			});
 	}
@@ -400,11 +413,11 @@ plugin.uploadFile = function (data, callback) {
 	}
 
 	fs.readFile(file.path, function (err, buffer) {
-		upload(file.name, err, buffer, callback);
+		upload(file.name, file.path, err, buffer, callback);
 	});
 };
 
-function upload(filename, err, buffer, callback) {
+function upload(filename, filepath, err, buffer, callback) {
 	if(settings.provider === "s3") {
 		uploadToS3(filename, err, buffer, callback);
 	}
@@ -412,7 +425,7 @@ function upload(filename, err, buffer, callback) {
 		uploadToMinio(filename, err, buffer, callback);
 	}
 	if(settings.provider === "gcs") {
-		uploadToGCS(filename, err, buffer, callback);
+		uploadToGCS(filename, filepath, err, buffer, callback);
 	}
 }
 
@@ -515,8 +528,29 @@ function uploadToMinio(filename, err, buffer, callback) {
 	});
 }
 
-function uploadToGCS(filename, err, buffer, callback) {
-	// TODO
+ function uploadToGCS(filename, filepath, err, buffer, callback) {
+	winston.info("Uploading %s to google cloud storage ...", filename);
+	const options = {
+		destination: filename,
+		public: true,
+		resumable: false
+	};
+
+	getConnection().bucket(settings.bucket).upload(filepath, options, function(err, file, apiResponse) {
+		if(!err){
+			winston.debug('File %s has been uploaded to %s', filename, settings.bucket);
+
+			const { mediaLink, } = apiResponse;
+			winston.debug('Public URL: %s', mediaLink);
+
+			callback(null, {
+				name: filename,
+				url: mediaLink
+			});
+		} else {
+			return callback(makeError(err));
+		}
+	});
 }
 
 var admin = plugin.admin = {};
