@@ -48,13 +48,12 @@ function initSettingsFromEnv() {
 			}
 		}
 		case "gcs": {
-			const gcsUploadBucket = nconf.get("gcs_upload_bucket");
 			const gcsServiceAccountBase64 = nconf.get("gcs_service_account");
 
 			return {
 				"provider": "gcs",
 				"serviceAccount": JSON.parse(Buffer.from(process.env.GCS_SERVICE_ACCOUNT || gcsServiceAccountBase64 || '', 'base64').toString('utf-8') || '{}'),
-				"bucket": process.env.GCS_UPLOAD_BUCKET || gcsUploadBucket || undefined,
+				"bucket": process.env.GCS_UPLOAD_BUCKET || undefined,
 				"host": process.env.GCS_UPLOAD_HOST || "storage.googleapis.com",
 				"path": process.env.GCS_UPLOAD_PATH || undefined,
 			}
@@ -181,7 +180,8 @@ function fetchSettings(callback) {
 			}
 	
 			if (!newSettings.bucket) {
-				settings.bucket = process.env.GCS_UPLOAD_BUCKET || "";
+				const gcsUploadBucket = nconf.get("gcs_upload_bucket");
+				settings.bucket = process.env.GCS_UPLOAD_BUCKET || gcsUploadBucket || "";
 			}
 	
 			if (!newSettings.host) {
@@ -193,7 +193,7 @@ function fetchSettings(callback) {
 			}
 	
 			if (settings.serviceAccount) {
-				winston.info("Service account loaded from environment variable GCS_SERVICE_ACCOUNT");
+				winston.debug("GCS service account successfully loaded ...");
 			}
 		}
 
@@ -529,7 +529,7 @@ function uploadToMinio(filename, err, buffer, callback) {
 }
 
  function uploadToGCS(filename, filepath, err, buffer, callback) {
-	winston.info("Uploading %s to google cloud storage ...", filename);
+	winston.info("Uploading %s to google cloud storage bucket %s ...", filename, settings.bucket);
 	const options = {
 		destination: filename,
 		public: true,
