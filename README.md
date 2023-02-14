@@ -29,8 +29,10 @@ export CLOUD_FRONT_DOMAIN="cloud-front-url"
 // gcs
 export GCS_SERVICE_ACCOUNT="your-service-account-json"
 export GCS_UPLOAD_BUCKET="your-bucket-name"
+export GCS_UPLOAD_DIRECTORY="optional-gcs-directory"
 export GCS_UPLOAD_HOST="host"
 export GCS_UPLOAD_PATH="path"
+
 
 // minio
 export MINIO_ACCESS_KEY="your-access-key"
@@ -54,6 +56,23 @@ From the NodeBB Admin panel, you can configure the following settings to be stor
 * `accessKeyId` — The AWS or Minio Access Key Id
 * `secretAccessKey` — The AWS or Minio Secret Access Key
 * `serviceAccount` - Google cloud service account JSON (base64 encoded)
+
+### Using `config.json`n to configure GCS:
+
+Use these values for configuring GCS provider in config.json:
+`
+...
+"cloud_upload_provider": "gcs",
+  	"gcs": {
+	  "credential_file": "./service-account-cred.json",
+	  "upload_bucket": "bucket-name",
+	  "upload_directory": "optional-directory-name",
+    "upload_host":"optional-upload-host",
+    "upload_path":"optional-upload-path",
+	  "service_account": "base64-service-account"
+	}
+...
+`
 
 **NOTE: Storing your Credentials in the database is bad practice, and you really shouldn't do it.**
 
