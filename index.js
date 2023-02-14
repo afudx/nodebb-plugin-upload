@@ -48,7 +48,7 @@ function initSettingsFromEnv() {
 			}
 		}
 		case "gcs": {
-			const gcsServiceAccountBase64 = nconf.get("gcs_service_account");
+			const gcsServiceAccountBase64 = nconf.get("gcs:service_account");
 
 			return {
 				"provider": "gcs",
@@ -180,7 +180,7 @@ function fetchSettings(callback) {
 			}
 	
 			if (!newSettings.bucket) {
-				const gcsUploadBucket = nconf.get("gcs_upload_bucket");
+				const gcsUploadBucket = nconf.get("gcs:upload_bucket");
 				settings.bucket = process.env.GCS_UPLOAD_BUCKET || gcsUploadBucket || "";
 			}
 	
@@ -197,7 +197,7 @@ function fetchSettings(callback) {
 			}
 
 			if (!settings.uploadDirectory) {
-				const gcsUploadDirectory = nconf.get("gcs_upload_directory");
+				const gcsUploadDirectory = nconf.get("gcs:upload_directory");
 				settings.uploadDirectory = process.env.GCS_UPLOAD_DIRECTORY || gcsUploadDirectory || "";
 			}
 		}
@@ -228,7 +228,7 @@ function getConnection() {
 		}
 
 		if(settings.provider === "gcs") {
-			const gcsCredentialFile = nconf.get("gcs_credential_file");
+			const gcsCredentialFile = nconf.get("gcs:credential_file");
 			if(!gcsCredentialFile){
 				throw new Error('GCS credential must be set when selecting UPLOAD_PROVIDER = gcs ');
 			}
