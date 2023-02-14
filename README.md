@@ -67,8 +67,8 @@ Use these values for configuring GCS provider in config.json:
 	  "credential_file": "./service-account-cred.json",
 	  "upload_bucket": "bucket-name",
 	  "upload_directory": "optional-directory-name",
-    "upload_host":"optional-upload-host",
-    "upload_path":"optional-upload-path",
+    	  "upload_host":"optional-upload-host",
+    	  "upload_path":"optional-upload-path",
 	  "service_account": "base64-service-account"
 	}
 ...
