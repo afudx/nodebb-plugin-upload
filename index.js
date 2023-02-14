@@ -195,6 +195,11 @@ function fetchSettings(callback) {
 			if (settings.serviceAccount) {
 				winston.debug("GCS service account successfully loaded ...");
 			}
+
+			if (!settings.uploadDirectory) {
+				const gcsUploadDirectory = nconf.get("gcs_upload_directory");
+				settings.uploadDirectory = process.env.GCS_UPLOAD_DIRECTORY || gcsUploadDirectory || "";
+			}
 		}
 
 		if (typeof callback === "function") {
@@ -529,16 +534,22 @@ function uploadToMinio(filename, err, buffer, callback) {
 }
 
  function uploadToGCS(filename, filepath, err, buffer, callback) {
-	winston.info("Uploading %s to google cloud storage bucket %s ...", filename, settings.bucket);
+	winston.info("Uploading %s to google cloud storage bucket %s in directory %s ...", filename, settings.bucket, settings.uploadDirectory);
+
+	let fileUploadPath = filename;
+	if(settings.uploadDirectory) {
+		fileUploadPath = settings.uploadDirectory + '/' + filename;
+	}
+
 	const options = {
-		destination: filename,
+		destination: fileUploadPath,
 		public: true,
 		resumable: false
 	};
 
 	getConnection().bucket(settings.bucket).upload(filepath, options, function(err, file, apiResponse) {
 		if(!err){
-			winston.debug('File %s has been uploaded to %s', filename, settings.bucket);
+			winston.debug('File %s has been uploaded to bucket %s', fileUploadPath, settings.bucket);
 
 			const { mediaLink, } = apiResponse;
 			winston.debug('Public URL: %s', mediaLink);
