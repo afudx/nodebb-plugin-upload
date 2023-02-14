@@ -60,7 +60,7 @@ From the NodeBB Admin panel, you can configure the following settings to be stor
 ### Using `config.json`n to configure GCS:
 
 Use these values for configuring GCS provider in config.json:
-`
+```
 ...
 "cloud_upload_provider": "gcs",
   	"gcs": {
@@ -72,7 +72,7 @@ Use these values for configuring GCS provider in config.json:
 	  "service_account": "base64-service-account"
 	}
 ...
-`
+```
 
 **NOTE: Storing your Credentials in the database is bad practice, and you really shouldn't do it.**
 
