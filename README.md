@@ -1,4 +1,5 @@
-# NodeBB Upload plugin
+# NodeBB Upload plugin (with GCS Implementation)
+This fork contains a slightly different implementation compared to the [upstream repository](https://github.com/dasmeta/nodebb-plugin-upload). This fork contains implementation of GCS provider and make it as a default provider (formerly amazon S3). This also add an alternative configuration by using **config.json**
 
 `npm install @dasmeta/nodebb-plugin-upload`
 
